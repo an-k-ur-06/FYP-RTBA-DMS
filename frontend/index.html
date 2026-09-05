@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Blood Availability & Donor Matching System</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-badge">R</div>
+        <div>
+          <div class="brand-title">Rakta Nidhi</div>
+          <div class="brand-subtitle">Real-Time Blood Availability & Donor Matching System</div>
+          </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-view="dashboard">
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-view="donors">
+          <span>Donors</span>
+        </a>
+        <a class="nav-item" data-view="hospitals">
+          <span>Hospitals</span>
+        </a>
+        <a class="nav-item" data-view="doctors">
+          <span>Doctors</span>
+        </a>
+        <a class="nav-item" data-view="patients">
+          <span>Patients</span>
+        </a>
+        <a class="nav-item" data-view="inventory">
+          <span>Blood Inventory</span>
+        </a>
+        <a class="nav-item" data-view="requests">
+          <span>Blood Requests</span>
+        </a>
+        <a class="nav-item" data-view="matching">
+          <span>Donor Matching</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="ws-status">
+          <div class="ws-dot" id="ws-dot"></div>
+          <span id="ws-status-text">Connecting...</span>
+        </div>
+        <span>v1.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <h1 class="page-title" id="page-header-title">Operational Dashboard</h1>
+        <div class="top-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-quick-donation">+ Record Donation</button>
+          <button class="btn btn-secondary btn-sm" id="btn-quick-donor">+ New Donor</button>
+          <button class="btn btn-primary btn-sm" id="btn-quick-request">+ Emergency Request</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Donors</div>
+              <div class="stat-value" id="stat-total-donors">0</div>
+              <div class="stat-meta" id="stat-available-donors">0 Currently Available</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Hospitals</div>
+              <div class="stat-value" id="stat-total-hospitals">0</div>
+              <div class="stat-meta">Active Blood Centers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pending Requests</div>
+              <div class="stat-value" id="stat-pending-requests">0</div>
+              <div class="stat-meta" id="stat-critical-requests">0 Critical Urgency</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Inventory Units</div>
+              <div class="stat-value" id="stat-total-inventory">0</div>
+              <div class="stat-meta" id="stat-low-inventory">0 Low Stock Alerts</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Regional Blood Stock Overview</div>
+              <button class="btn btn-secondary btn-sm" id="btn-view-all-inventory">Manage Inventory</button>
+            </div>
+            <div class="card-body">
+              <div class="inventory-grid" id="dashboard-inventory-grid">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Recent Emergency Requests</div>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Hospital</th>
+                      <th>Patient</th>
+                      <th>Group</th>
+                      <th>Units</th>
+                      <th>Urgency</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-recent-requests-table">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Recent Matching Activity</div>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Top Donor</th>
+                      <th>Group</th>
+                      <th>RF Score</th>
+                      <th>Fuzzy Score</th>
+                      <th>Rank</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-recent-matches-table">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. DONORS VIEW -->
+        <section id="view-donors" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Donor Management</div>
+              <button class="btn btn-primary btn-sm" id="btn-add-donor">+ Register Donor</button>
+            </div>
+            <div class="card-body" style="padding-bottom:0;">
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:16px;">
+                <input type="text" class="form-control" id="donor-search-input" placeholder="Search donors by name, email, phone...">
+                <select class="form-control" id="donor-blood-filter">
+                  <option value="">All Blood Groups</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+                <select class="form-control" id="donor-status-filter">
+                  <option value="">All Availability</option>
+                  <option value="true">Available Only</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Donor Name</th>
+                    <th>Group</th>
+                    <th>Age / Gender</th>
+                    <th>Contact</th>
+                    <th>Last Donated</th>
+                    <th>Total Donated</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="donors-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. HOSPITALS VIEW -->
+        <section id="view-hospitals" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Hospital & Blood Bank Directory</div>
+              <button class="btn btn-primary btn-sm" id="btn-add-hospital">+ Add Hospital</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hospital Name</th>
+                    <th>Code</th>
+                    <th>City / Address</th>
+                    <th>Coordinates</th>
+                    <th>Phone</th>
+                    <th>Emergency Contact</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="hospitals-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. DOCTORS VIEW -->
+        <section id="view-doctors" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Doctor Registry</div>
+              <button class="btn btn-primary btn-sm" id="btn-add-doctor">+ Add Doctor</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Doctor Name</th>
+                    <th>License Number</th>
+                    <th>Specialization</th>
+                    <th>Hospital</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="doctors-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. PATIENTS VIEW -->
+        <section id="view-patients" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Patient Registry</div>
+              <button class="btn btn-primary btn-sm" id="btn-add-patient">+ Register Patient</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Patient Name</th>
+                    <th>MRN Number</th>
+                    <th>Age / Gender</th>
+                    <th>Blood Group</th>
+                    <th>Hospital</th>
+                    <th>Condition Summary</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="patients-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. BLOOD INVENTORY VIEW -->
+        <section id="view-inventory" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Hospital Blood Stock Inventory</div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="btn-allocate-units">Allocate Units</button>
+                <button class="btn btn-primary btn-sm" id="btn-update-inventory-units">+ Update Stock</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding-bottom:0;">
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+                <select class="form-control" id="inventory-hospital-filter">
+                  <option value="">All Hospitals</option>
+                </select>
+                <select class="form-control" id="inventory-blood-filter">
+                  <option value="">All Blood Groups</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hospital Name</th>
+                    <th>Blood Group</th>
+                    <th>Available Units</th>
+                    <th>Reserved Units</th>
+                    <th>Min Threshold</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. BLOOD REQUESTS VIEW -->
+        <section id="view-requests" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Emergency Blood Requests</div>
+              <button class="btn btn-primary btn-sm" id="btn-create-request">+ Create Request</button>
+            </div>
+            <div class="card-body" style="padding-bottom:0;">
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+                <select class="form-control" id="request-urgency-filter">
+                  <option value="">All Urgency Levels</option>
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+                <select class="form-control" id="request-status-filter">
+                  <option value="">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Matching">Matching</option>
+                  <option value="Partially Fulfilled">Partially Fulfilled</option>
+                  <option value="Fulfilled">Fulfilled</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hospital</th>
+                    <th>Patient</th>
+                    <th>Required Group</th>
+                    <th>Units</th>
+                    <th>Urgency</th>
+                    <th>Clinical Severity</th>
+                    <th>Status</th>
+                    <th>Matching Pipeline</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="requests-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. DONOR MATCHING VIEW -->
+        <section id="view-matching" class="view-section">
+          <div class="card" id="matching-request-card">
+            <div class="card-header">
+              <div class="card-title">Intelligent Donor Matching Pipeline</div>
+              <button class="btn btn-secondary btn-sm" id="btn-back-to-requests">Back to Requests</button>
+            </div>
+            <div class="card-body">
+              <div id="matching-request-details">
+                <p style="color: var(--text-muted);">Select a blood request from the Blood Requests page to execute donor matching.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="matching-results-card" style="display:none;">
+            <div class="card-header">
+              <div class="card-title">Ranked Donor Recommendations</div>
+              <span class="badge badge-success" id="matching-exec-time">Execution Time: 0ms</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Donor Name</th>
+                    <th>Group</th>
+                    <th>ABO Compatible</th>
+                    <th>Distance (km)</th>
+                    <th>Random Forest Score</th>
+                    <th>Fuzzy Priority Score</th>
+                    <th>Fuzzy Rank</th>
+                    <th>Contact</th>
+                  </tr>
+                </thead>
+                <tbody id="matching-results-table-body">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODALS CONTAINER -->
+  <!-- 1. Add/Edit Donor Modal -->
+  <div class="modal-overlay" id="modal-donor">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-donor-title">Register New Donor</div>
+        <button class="modal-close" data-close="modal-donor">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-donor">
+          <input type="hidden" id="donor-id">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" class="form-control" id="donor-name" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" class="form-control" id="donor-email" required>
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="text" class="form-control" id="donor-phone" required>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <select class="form-control" id="donor-blood-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Rh Factor</label>
+              <select class="form-control" id="donor-rh-factor" required>
+                <option value="+">+</option>
+                <option value="-">-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" class="form-control" id="donor-age" min="18" max="65" value="30" required>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-control" id="donor-gender" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Latitude</label>
+              <input type="number" step="any" class="form-control" id="donor-lat" value="40.7128" required>
+            </div>
+            <div class="form-group">
+              <label>Longitude</label>
+              <input type="number" step="any" class="form-control" id="donor-lng" value="-74.0060" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Availability Status</label>
+            <select class="form-control" id="donor-is-available">
+              <option value="true">Available</option>
+              <option value="false">Unavailable</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-donor">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-donor">Save Donor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Add/Edit Hospital Modal -->
+  <div class="modal-overlay" id="modal-hospital">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-hospital-title">Add Hospital</div>
+        <button class="modal-close" data-close="modal-hospital">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-hospital">
+          <input type="hidden" id="hospital-id">
+          <div class="form-group">
+            <label>Hospital Name</label>
+            <input type="text" class="form-control" id="hospital-name" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Hospital Code</label>
+              <input type="text" class="form-control" id="hospital-code" placeholder="HOSP-XXX" required>
+            </div>
+            <div class="form-group">
+              <label>City</label>
+              <input type="text" class="form-control" id="hospital-city" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" class="form-control" id="hospital-address" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Latitude</label>
+              <input type="number" step="any" class="form-control" id="hospital-lat" value="40.7128" required>
+            </div>
+            <div class="form-group">
+              <label>Longitude</label>
+              <input type="number" step="any" class="form-control" id="hospital-lng" value="-74.0060" required>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="text" class="form-control" id="hospital-phone" required>
+            </div>
+            <div class="form-group">
+              <label>Emergency Contact</label>
+              <input type="text" class="form-control" id="hospital-emergency" required>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-hospital">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-hospital">Save Hospital</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Add Doctor Modal -->
+  <div class="modal-overlay" id="modal-doctor">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Add Doctor</div>
+        <button class="modal-close" data-close="modal-doctor">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-doctor">
+          <div class="form-group">
+            <label>Hospital</label>
+            <select class="form-control" id="doctor-hospital-id" required></select>
+          </div>
+          <div class="form-group">
+            <label>Doctor Name</label>
+            <input type="text" class="form-control" id="doctor-name" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>License Number</label>
+              <input type="text" class="form-control" id="doctor-license" required>
+            </div>
+            <div class="form-group">
+              <label>Specialization</label>
+              <input type="text" class="form-control" id="doctor-spec" required>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="text" class="form-control" id="doctor-phone" required>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" class="form-control" id="doctor-email" required>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-doctor">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-doctor">Save Doctor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Add Patient Modal -->
+  <div class="modal-overlay" id="modal-patient">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Register Patient</div>
+        <button class="modal-close" data-close="modal-patient">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-patient">
+          <div class="form-group">
+            <label>Hospital</label>
+            <select class="form-control" id="patient-hospital-id" required></select>
+          </div>
+          <div class="form-group">
+            <label>Patient Name</label>
+            <input type="text" class="form-control" id="patient-name" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Medical Record Number (MRN)</label>
+              <input type="text" class="form-control" id="patient-mrn" required>
+            </div>
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" class="form-control" id="patient-age" min="0" max="120" value="35" required>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-control" id="patient-gender" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Blood Group</label>
+              <select class="form-control" id="patient-blood-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Rh Factor</label>
+            <select class="form-control" id="patient-rh-factor" required>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Condition Summary</label>
+            <input type="text" class="form-control" id="patient-condition">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-patient">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-patient">Save Patient</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Update Inventory Units Modal -->
+  <div class="modal-overlay" id="modal-inventory">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Update Blood Stock</div>
+        <button class="modal-close" data-close="modal-inventory">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-inventory">
+          <div class="form-group">
+            <label>Hospital</label>
+            <select class="form-control" id="inventory-update-hospital" required></select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <select class="form-control" id="inventory-update-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Rh Factor</label>
+              <select class="form-control" id="inventory-update-rh" required>
+                <option value="+">+</option>
+                <option value="-">-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Available Units</label>
+              <input type="number" class="form-control" id="inventory-update-units" min="0" value="10" required>
+            </div>
+            <div class="form-group">
+              <label>Minimum Threshold</label>
+              <input type="number" class="form-control" id="inventory-update-threshold" min="1" value="5" required>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-inventory">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-inventory">Save Stock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Allocate Inventory Modal -->
+  <div class="modal-overlay" id="modal-allocate">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Allocate Blood Units</div>
+        <button class="modal-close" data-close="modal-allocate">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-allocate">
+          <div class="form-group">
+            <label>Hospital</label>
+            <select class="form-control" id="allocate-hospital" required></select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <select class="form-control" id="allocate-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Rh Factor</label>
+              <select class="form-control" id="allocate-rh" required>
+                <option value="+">+</option>
+                <option value="-">-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Units to Allocate</label>
+            <input type="number" class="form-control" id="allocate-units" min="1" value="1" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-allocate">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-allocate">Confirm Allocation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Create Request Modal -->
+  <div class="modal-overlay" id="modal-request">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Create Emergency Blood Request</div>
+        <button class="modal-close" data-close="modal-request">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-request">
+          <div class="form-group">
+            <label>Hospital</label>
+            <select class="form-control" id="request-hospital-id" required></select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Patient</label>
+              <select class="form-control" id="request-patient-id" required></select>
+            </div>
+            <div class="form-group">
+              <label>Doctor (Optional)</label>
+              <select class="form-control" id="request-doctor-id"></select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Required Group</label>
+              <select class="form-control" id="request-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Rh Factor</label>
+              <select class="form-control" id="request-rh" required>
+                <option value="+">+</option>
+                <option value="-">-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Units Required</label>
+              <input type="number" class="form-control" id="request-units" min="1" value="2" required>
+            </div>
+            <div class="form-group">
+              <label>Urgency Level</label>
+              <select class="form-control" id="request-urgency" required>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Clinical Severity Score (1.0 - 10.0)</label>
+            <input type="number" step="0.1" class="form-control" id="request-severity" min="1.0" max="10.0" value="8.0" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-request">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-request">Submit Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Record Donation Modal -->
+  <div class="modal-overlay" id="modal-donation">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Record Blood Donation</div>
+        <button class="modal-close" data-close="modal-donation">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-donation">
+          <div class="form-group">
+            <label>Donor</label>
+            <select class="form-control" id="donation-donor-id" required></select>
+          </div>
+          <div class="form-group">
+            <label>Receiving Hospital</label>
+            <select class="form-control" id="donation-hospital-id" required></select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <select class="form-control" id="donation-group" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Rh Factor</label>
+              <select class="form-control" id="donation-rh" required>
+                <option value="+">+</option>
+                <option value="-">-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Units Donated</label>
+            <input type="number" class="form-control" id="donation-units" min="1" value="1" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-donation">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-donation">Record Donation</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
