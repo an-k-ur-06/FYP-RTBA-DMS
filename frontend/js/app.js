@@ -932,12 +932,11 @@ function setupWebSocketHandler() {
   const txt = document.getElementById("ws-status-text");
 
   initWebSocket((connected) => {
-    if (connected) {
-      dot.className = "ws-dot connected";
-      txt.innerText = "Live Real-Time";
-    } else {
-      dot.className = "ws-dot";
-      txt.innerText = "Connecting...";
+    if (dot) {
+      dot.className = connected ? "ws-dot connected" : "ws-dot";
+    }
+    if (txt) {
+      txt.innerText = connected ? "Live Real-Time" : "Connecting...";
     }
   });
 
